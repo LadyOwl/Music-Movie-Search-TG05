@@ -4,7 +4,7 @@ from aiogram.filters import Command
 from config import BOT_TOKEN
 from keyboards import get_start_keyboard, get_back_keyboard
 from music import search_artist, search_track
-from movie import search_movie, get_movie_details
+from movie import search_movie, get_movie_details, get_poster_url
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -19,7 +19,7 @@ async def cmd_start(message: types.Message):
         f"Привет, {user_name}! 👋\n\n"
         "Я помогу тебе найти:\n"
         "• 🎵 Музыку и исполнителей (Last.fm)\n"
-        "• 🎬 Фильмы и сериалы (Kinopoisk)\n\n"
+        "• 🎬 Фильмы и сериалы (TMDB)\n\n"
         "Выбери, что искать:",
         reply_markup=keyboard
     )
@@ -43,7 +43,7 @@ async def btn_movie(callback: types.CallbackQuery):
     await callback.message.answer(
         "🎬 **Поиск фильмов**\n\n"
         "Отправь мне название фильма,\n"
-        "и я найду информацию в Kinopoisk!\n\n"
+        "и я найду информацию в TMDB!\n\n"
         "⬅️ /start — вернуться в меню"
     )
     await callback.answer()
@@ -76,9 +76,11 @@ async def handle_text(message: types.Message):
         tracks = await search_track(text)
 
         if tracks:
-            result = f"🎵 **Найдено треков:**\n\n"
+            result = "🎵 **Найдено треков:**\n\n"
             for i, track in enumerate(tracks, 1):
-                result += f"{i}. **{track.get('name', 'N/A')}** — {track.get('artist', 'N/A')}\n"
+                name = track.get('name', 'N/A')
+                artist = track.get('artist', 'N/A')
+                result += f"{i}. **{name}** — {artist}\n"
             await message.answer(result)
         else:
             await message.answer("❌ Трек не найден. Попробуй другое название.")
@@ -106,7 +108,7 @@ async def handle_text(message: types.Message):
             await message.answer("❌ Исполнитель не найден. Попробуй другое название.")
 
 
-# Обработка текста - поиск фильмов (через команду /movie)
+# Обработка команды /movie
 @dp.message(Command("movie"))
 async def cmd_movie(message: types.Message):
     args = message.text.split(maxsplit=1)
@@ -123,10 +125,14 @@ async def cmd_movie(message: types.Message):
     if movies:
         result = "🎬 **Найдено фильмов:**\n\n"
         for i, movie in enumerate(movies, 1):
-            rating = movie.get("rating", "N/A")
-            year = movie.get("year", "N/A")
-            title = movie.get("nameRu", movie.get("nameOriginal", "N/A"))
-            result += f"{i}. **{title}** ({year}) — Рейтинг: {rating}\n"
+            title = movie.get("title", "N/A")
+            year = movie.get("release_date", "N/A")[:4] if movie.get("release_date") else "N/A"
+            rating = movie.get("vote_average", "N/A")
+            overview = movie.get("overview", "Описание недоступно")
+            if len(overview) > 100:
+                overview = overview[:100] + "..."
+
+            result += f"{i}. **{title}** ({year}) ⭐ {rating}\n📝 {overview}\n\n"
 
         await message.answer(result)
     else:
