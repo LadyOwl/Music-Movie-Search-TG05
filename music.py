@@ -58,3 +58,37 @@ async def search_track(track_name: str):
     except Exception as e:
         print(f"❌ Ошибка Last.fm: {e}")
         return None
+
+
+async def get_track_info(artist_name: str, track_name: str):
+    """Получение информации о треке с ссылкой"""
+    url = "https://ws.audioscrobbler.com/2.0/"
+    params = {
+        "method": "track.getInfo",
+        "artist": artist_name,
+        "track": track_name,
+        "api_key": LASTFM_KEY,
+        "format": "json",
+        "lang": "ru"
+    }
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, params=params) as response:
+                data = await response.json()
+
+        if "error" in data:
+            return None
+
+        track_info = data["track"]
+        return {
+            "name": track_info.get("name", "N/A"),
+            "artist": track_info.get("artist", {}).get("name", "N/A"),
+            "url": track_info.get("url", ""),
+            "image": track_info.get("album", {}).get("image", [{}])[-1].get("#text", ""),
+            "duration": track_info.get("duration", ""),
+            "playcount": track_info.get("playcount", "0")
+        }
+    except Exception as e:
+        print(f"❌ Ошибка Last.fm: {e}")
+        return None
